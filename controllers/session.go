@@ -2,12 +2,14 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"goaml-api/config"
 	"goaml-api/models"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"gorm.io/gorm"
 )
 
 // RegisterHandlers registers handlers with the given router.
@@ -25,7 +27,12 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	// Validate user credentials from the database
 	var fetchedUser models.User
 	if err := config.DB.Where("username = ?", user.Username).First(&fetchedUser).Error; err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{"status": false})
+		// If user not found, return 404 Not Found status code
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
 	log.Println("Berhasil mengambil data pengguna dari database")
@@ -39,7 +46,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	session := models.Session{
 		Username:   user.Username,
 		CustomerID: user.CustomerID,
-		SessionID:  "123456", // Mock session ID
+		SessionID:  "c", // Mock session ID
 	}
 	log.Println("Membuat sesi baru untuk pengguna:", user.Username)
 
